@@ -1,9 +1,17 @@
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 Status = Literal["active", "adjourned", "closed"]
+Outcome = Literal["heard", "adjourned", "reserved", "disposed"]
 RequiredText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
@@ -95,3 +103,93 @@ class Stats(BaseModel):
     adjourned: int
     closed: int
     hearings_this_week: int
+
+
+class HearingCreate(BaseModel):
+    hearing_date: date
+    outcome: Outcome
+    purpose: str | None = None
+    notes: str | None = None
+    next_date: date | None = None
+
+    @model_validator(mode="after")
+    def check_next_date(self):
+        if self.next_date is None:
+            return self
+        if self.outcome == "disposed":
+            raise ValueError("A disposed matter has no next date.")
+        if self.next_date <= self.hearing_date:
+            raise ValueError("The next date must be after this hearing.")
+        return self
+
+
+class HearingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    matter_id: int
+    hearing_date: date
+    purpose: str | None
+    outcome: Outcome
+    notes: str | None
+
+
+class TaskCreate(BaseModel):
+    title: RequiredText
+    due_date: date | None = None
+
+
+class TaskUpdate(BaseModel):
+    title: RequiredText | None = None
+    due_date: date | None = None
+    done: bool | None = None
+
+    @field_validator("title", "done")
+    @classmethod
+    def reject_null(cls, value):
+        if value is None:
+            raise ValueError("cannot be empty")
+        return value
+
+
+class TaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    matter_id: int
+    matter_title: str
+    title: str
+    due_date: date | None
+    done: bool
+
+
+class ActivityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    matter_id: int | None
+    message: str
+    created_at: datetime
+
+
+class CalendarEntry(BaseModel):
+    date: date
+    matter_id: int
+    title: str
+    court: str
+    kind: Literal["scheduled", "recorded"]
+    outcome: Outcome | None = None
+
+
+class CountByLabel(BaseModel):
+    label: str
+    count: int
+
+
+class Analytics(BaseModel):
+    by_court: list[CountByLabel]
+    by_status: list[CountByLabel]
+    hearings_by_month: list[CountByLabel]
+    adjournment_rate: int
+    open_tasks: int
+    overdue_tasks: int
