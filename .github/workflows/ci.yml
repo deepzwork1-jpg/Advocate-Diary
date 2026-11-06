@@ -19,6 +19,24 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q
 
+  small-projects:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -r projects/url-shortener/requirements.txt
+      - run: python -m pytest -q
+        working-directory: projects/url-shortener
+      - run: python -m pytest -q
+        working-directory: projects/deadline-calculator
+      - run: npm test
+        working-directory: projects/expense-splitter
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
