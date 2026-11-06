@@ -1,20 +1,22 @@
 # Hearing Diary
 
-A small full-stack app for tracking court matters and the next hearing date in each one.
-Each user signs in and sees only their own matters, a summary, and the hearings due in the next seven days.
+A full-stack practice manager for advocates. Track matters, record what happened at each hearing, see every date on a calendar, manage tasks and watch trends on an analytics page. Each user signs in and sees only their own data.
 
-Built as a compact sample project: every part (API, auth, database, UI, tests, CI, Docker) is small enough to read in one sitting.
+This is a sample project. All demo data is invented.
 
-**Stack:** Python, FastAPI, SQLAlchemy, SQLite (or Postgres through `DATABASE_URL`), React 18, Vite, pytest, GitHub Actions, Docker.
+**Stack:** Python, FastAPI, SQLAlchemy, SQLite (or Postgres through `DATABASE_URL`), React 18, React Router, Recharts, Vite, pytest, GitHub Actions, Docker.
 
 ## Features
 
-- Register and sign in with hashed passwords (bcrypt) and JWT bearer tokens
-- Create, update and delete matters
-- Search, status filter and server-side pagination
-- Summary counts and a seven-day hearing list
-- Per-user data isolation, covered by tests
-- Dark mode and a phone-friendly layout
+- **Dashboard:** summary cards, the next seven days, open tasks and recent activity
+- **Matters:** search, status filter, server-side pagination and CSV export
+- **Hearing history:** recording an outcome updates the matter's status and next date
+- **Calendar:** a month view of scheduled dates and recorded hearings
+- **Tasks:** linked to a matter, with due dates and overdue flags
+- **Analytics:** hearings per month, matters by court and status, adjournment rate
+- **Activity timeline:** kept for each matter and across the account
+- **Accounts:** bcrypt password hashing, JWT tokens and per-user data isolation
+- **Interface:** dark mode, phone layout with bottom tabs, loading and empty states
 
 ## Run it locally
 
@@ -39,9 +41,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and sign in with the demo account `demo@example.com` / `demo-pass-123`. All seed data is invented.
+Open http://localhost:5173 and sign in with the demo account `demo@example.com` / `demo-pass-123`.
 
-**Or with Docker**, which serves the API and the built UI together on one port:
+**Docker** serves the API and the built UI together on one port:
 
 ```bash
 docker build -t hearing-diary .
@@ -55,31 +57,37 @@ cd backend
 python -m pytest
 ```
 
-GitHub Actions runs the backend tests and the frontend build on every push.
+GitHub Actions runs every test suite and the frontend build on each push.
 
 ## API
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/api/auth/register` | Create an account |
-| POST | `/api/auth/login` | Get a token |
-| GET | `/api/auth/me` | Current user |
-| GET | `/api/matters` | List, with `q`, `status`, `page`, `page_size` |
-| POST | `/api/matters` | Add a matter |
-| GET | `/api/matters/{id}` | Read one matter |
-| PATCH | `/api/matters/{id}` | Change only the fields sent |
-| DELETE | `/api/matters/{id}` | Delete a matter |
-| GET | `/api/hearings/upcoming` | Hearings in the next `days` (default 7) |
-| GET | `/api/stats` | Summary counts |
-| GET | `/api/health` | Health check |
+Full details are in the interactive docs at `/docs`.
+
+| Area | Endpoints |
+| --- | --- |
+| Accounts | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
+| Matters | `GET, POST /api/matters`, `GET, PATCH, DELETE /api/matters/{id}`, `GET /api/matters/export` |
+| Hearings | `GET, POST /api/matters/{id}/hearings`, `GET /api/hearings/upcoming` |
+| Tasks | `GET /api/tasks`, `POST /api/matters/{id}/tasks`, `PATCH, DELETE /api/tasks/{id}` |
+| Insights | `GET /api/stats`, `GET /api/analytics`, `GET /api/calendar`, `GET /api/activity`, `GET /api/matters/{id}/activity` |
 
 ## Design notes
 
-- **PATCH uses `exclude_unset`.** Only fields the client actually sent are written, so a status change cannot blank the notes. Clearing an optional field with an explicit `null` still works.
-- **Another user's matter returns 404, not 403**, so ids belonging to other users stay hidden.
+- **PATCH uses `exclude_unset`.** Only fields the client sent are written, so a status change cannot blank the notes. An explicit `null` still clears an optional field.
+- **Back-filling is safe.** Recording an older hearing keeps the history but does not change the status or next date set by a later one.
+- **Another user's record returns 404, not 403**, so ids belonging to other users stay hidden.
 - **Login gives one error** for a wrong password and an unknown email, so the form does not reveal who has an account.
 - **No default secret key.** If `SECRET_KEY` is missing, a random one is generated at start-up. Sessions end on restart, but a known key can never ship by accident.
-- **Sorting ends with the id**, so a matter cannot appear on two pages when several share a date.
+- **CSV cells are neutralised**, so a matter titled `=SOMETHING` cannot run as a formula in Excel.
+- **Analytics loads on demand.** The chart library is split into its own bundle, so other pages stay light.
+
+## Small projects
+
+The [`projects`](projects) folder holds three small exercises, each with its own tests:
+
+- [Deadline Calculator](projects/deadline-calculator): a Python command-line tool for working-day deadlines
+- [URL Shortener](projects/url-shortener): a FastAPI service using hand-written SQL
+- [Expense Splitter](projects/expense-splitter): a JavaScript module that settles shared costs
 
 ## What I would add next
 
